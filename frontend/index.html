@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AICTE Trust Layer | Live Approval & Document Verification Platform</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="glass-header">
+    <div class="logo-group">
+      <div class="emblem-icon">🏛️</div>
+      <div class="logo-text">
+        <h1>AICTE Trust Layer</h1>
+        <span>Government of India &bull; AI Verification & Scrutiny Engine</span>
+      </div>
+    </div>
+
+    <!-- Active User & Role Controls -->
+    <div id="authHeaderControls" style="display:flex; align-items:center; gap:16px;">
+      <div id="liveDbStatus" style="font-size:12px; color:var(--accent-emerald); display:flex; align-items:center; gap:6px;">
+        <span class="dot"></span> MySQL 8.0 Live
+      </div>
+
+      <div id="userProfileBadge" style="display:none; align-items:center; gap:12px;">
+        <div class="persona-badge">
+          <span class="dot"></span>
+          <span id="headerUserName">Logged In</span>
+          <span id="headerUserRole" style="font-weight:700; color:#fff; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:10px;">ROLE</span>
+        </div>
+        <button id="btnLogout" class="btn btn-secondary" style="padding:4px 10px; font-size:11px;">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar (Visible once logged in) -->
+  <div id="appNavTabsContainer" style="display:none; padding:10px 32px; background:rgba(2, 6, 23, 0.4); border-bottom:1px solid var(--border-subtle);">
+    <nav class="nav-tabs" id="appNavTabs">
+      <!-- Tabs injected dynamically based on College vs Officer role -->
+    </nav>
+  </div>
+
+  <main style="max-width:1440px; margin:0 auto; padding:24px 32px;">
+
+    <!-- ==================== 1. AUTHENTICATION & LOGIN SCREEN ==================== -->
+    <section id="view-auth" class="view-section active">
+      <div style="max-width:960px; margin:20px auto;">
+        
+        <div style="text-align:center; margin-bottom:30px;">
+          <h2 style="font-size:28px; font-weight:800; letter-spacing:-0.5px;">Welcome to AICTE Approval Verification System</h2>
+          <p style="color:var(--text-muted); font-size:14px; margin-top:6px;">
+            Secure multi-tier access: Separate portals for Technical Institutions and AICTE Scrutiny Officers.
+          </p>
+        </div>
+
+        <div class="grid-2">
+          
+          <!-- College Login & Register Card -->
+          <div class="glass" style="padding:28px; border-radius:var(--radius-lg); border:1px solid rgba(56, 189, 248, 0.25);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <span style="font-size:24px;">🏛️</span>
+              <div>
+                <h3 style="font-size:18px; font-weight:700; color:var(--accent-cyan);">College / Institution Portal</h3>
+                <span style="font-size:12px; color:var(--text-dim);">Register, submit parameters & upload approval documents</span>
+              </div>
+            </div>
+
+            <!-- College Login Form -->
+            <div id="collegeLoginBox">
+              <form id="formCollegeLogin" style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                  <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">College Email Address</label>
+                  <input type="email" id="colLoginEmail" placeholder="admin@college.edu.in" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+                </div>
+                <div>
+                  <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Password</label>
+                  <input type="password" id="colLoginPass" placeholder="••••••••" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:8px; padding:12px;">
+                  Login to College Portal
+                </button>
+              </form>
+
+              <div style="margin-top:16px; text-align:center; font-size:13px; color:var(--text-muted);">
+                New college? <a href="#" id="linkShowColRegister" style="color:var(--accent-cyan); font-weight:600;">Register your institution</a>
+              </div>
+            </div>
+
+            <!-- College Registration Form (Hidden by default) -->
+            <div id="collegeRegisterBox" style="display:none;">
+              <form id="formCollegeRegister" style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block;">Institution Name</label>
+                  <input type="text" id="regColName" placeholder="e.g. National Institute of Technology" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">AICTE Permanent ID</label>
+                    <input type="text" id="regAicteId" placeholder="1-123456789" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">Sponsoring Trust/Society</label>
+                    <input type="text" id="regTrustName" placeholder="e.g. Vidya Education Trust" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">State</label>
+                    <input type="text" id="regState" placeholder="e.g. Delhi / Maharashtra" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">District</label>
+                    <input type="text" id="regDistrict" placeholder="e.g. New Delhi / Pune" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block;">Campus Address</label>
+                  <input type="text" id="regAddress" placeholder="Full postal address with pincode" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">Official Email</label>
+                    <input type="email" id="regEmail" placeholder="admin@institute.edu" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                  <div>
+                    <label style="font-size:11px; color:var(--text-muted); display:block;">Password</label>
+                    <input type="password" id="regPassword" placeholder="••••••••" required style="width:100%; padding:8px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-success" style="margin-top:8px; padding:10px;">
+                  Register Institution in MySQL
+                </button>
+                <div style="text-align:center; margin-top:8px;">
+                  <a href="#" id="linkBackToColLogin" style="font-size:12px; color:var(--text-muted);">Back to Login</a>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- AICTE Officer Login Card -->
+          <div class="glass" style="padding:28px; border-radius:var(--radius-lg); border:1px solid rgba(168, 85, 247, 0.25);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+              <span style="font-size:24px;">🛡️</span>
+              <div>
+                <h3 style="font-size:18px; font-weight:700; color:var(--accent-purple);">AICTE Administration Portal</h3>
+                <span style="font-size:12px; color:var(--text-dim);">Scrutiny Officers & Statutory Approval Committee</span>
+              </div>
+            </div>
+
+            <form id="formOfficerLogin" style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Officer Government Email</label>
+                <input type="email" id="officerLoginEmail" value="officer@aicte.gov.in" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+              <div>
+                <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Officer Password</label>
+                <input type="password" id="officerLoginPass" value="sanjit25" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+              <button type="submit" class="btn" style="background:linear-gradient(135deg, #7c3aed, #a855f7); color:#fff; margin-top:8px; padding:12px;">
+                Login to AICTE Officer Dashboard
+              </button>
+            </form>
+
+            <div style="margin-top:20px; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; font-size:12px; color:var(--text-muted);">
+              🛡️ <b>Official Credentials:</b><br>
+              Email: <code style="color:var(--accent-cyan);">officer@aicte.gov.in</code> &bull; Password: <code style="color:var(--accent-cyan);">sanjit25</code>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. COLLEGE DASHBOARD & DOCUMENT UPLOAD ==================== -->
+    <section id="view-college-portal" class="view-section">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 24px;">
+        <div>
+          <h2 style="font-size:24px; font-weight:800;" id="colDashboardTitle">College Approval Portal</h2>
+          <p style="color:var(--text-muted); font-size:14px;" id="colDashboardSubtitle">Enter institution parameters and upload documents one by one for AI extraction & scrutiny.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        
+        <!-- Step 1: Institutional Parameters Form -->
+        <div class="glass" style="padding:24px; border-radius:var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:16px; font-weight:700; color:var(--accent-cyan);">1. Institutional Parameters</h3>
+            <span class="badge-pill badge-low" id="appStatusBadge">DRAFT</span>
+          </div>
+
+          <form id="formCollegeParams" style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Applied Student Intake</label>
+                <input type="number" id="inpAppliedIntake" value="300" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Previous Approved Intake</label>
+                <input type="number" id="inpSanctionedIntake" value="300" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Full-Time Verified Faculty</label>
+                <input type="number" id="inpFacultyCount" value="20" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Total Enrolled Students</label>
+                <input type="number" id="inpTotalStudents" value="300" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Working Computer Terminals</label>
+              <input type="number" id="inpComputerCount" value="80" required style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top:6px; padding:10px;">
+              💾 Save / Update Institutional Parameters
+            </button>
+          </form>
+
+          <!-- Step 2: Upload Documents One-by-One -->
+          <div style="margin-top:24px; border-top:1px solid var(--border-subtle); padding-top:18px;">
+            <h3 style="font-size:16px; font-weight:700; color:var(--accent-emerald); margin-bottom:12px;">2. Upload Required Documents One-by-One</h3>
+            
+            <form id="formDocUpload" style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Select Document Type</label>
+                <select id="selectDocType" style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+                  <option value="Fire Safety NOC">Fire and Life Safety Certificate (NOC)</option>
+                  <option value="Land Title Deed">Registered Land Deed / Title Deed</option>
+                  <option value="Structural Safety Certificate">Structural Building Safety / Stability Certificate</option>
+                  <option value="Anti-Ragging Affidavit">Anti-Ragging Statutory Undertaking Affidavit</option>
+                  <option value="Occupancy Certificate">Municipal Occupancy / Completion Certificate</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Choose PDF File</label>
+                <input type="file" id="fileInputUpload" accept=".pdf,.png,.jpg,.jpeg" required style="width:100%; padding:8px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+
+              <button type="submit" id="btnUploadDocSubmit" class="btn btn-success" style="padding:12px; margin-top:4px;">
+                🚀 Upload, Scan & Analyze Real PDF
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Right Side: Real-time Analysis, Readiness Report & Uploaded Documents -->
+        <div class="glass" style="padding:24px; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:18px;">
+          
+          <!-- Readiness Score Card -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:16px; font-weight:700; color:#fff;">Pre-Submission Readiness Report</h3>
+            <span class="badge-pill badge-low" id="readinessScoreBadge">Score: --</span>
+          </div>
+
+          <div style="background:rgba(2, 6, 23, 0.6); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
+            <div style="display:flex; align-items:center; gap:18px;">
+              <div class="score-num" id="colReadinessNum" style="color:var(--accent-emerald);">--</div>
+              <div style="font-size:12px; color:var(--text-muted); border-left:1px solid var(--border-subtle); padding-left:16px;">
+                <div><b>Live AI Readiness Score</b> calculated against AICTE Approval Process Handbook (2024-2027).</div>
+                <div style="margin-top:4px;">Upload all 5 mandatory documents to achieve full completion.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Documents Added List -->
+          <div>
+            <h4 style="font-size:13px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;">Uploaded Documents in this Application</h4>
+            <div id="colUploadedDocsList" style="display:flex; flex-direction:column; gap:8px; max-height:180px; overflow-y:auto;">
+              <div style="color:var(--text-dim); font-size:12px; padding:10px; text-align:center;">No documents uploaded yet. Upload your first PDF above.</div>
+            </div>
+          </div>
+
+          <!-- Live Findings & Deficiencies Detected -->
+          <div style="margin-top:auto;">
+            <h4 style="font-size:13px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;">Deficiencies & Anomaly Warnings</h4>
+            <div id="colFindingsList" style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto;">
+              <div style="color:var(--text-dim); font-size:12px; padding:10px; text-align:center;">No deficiencies flagged. Upload documents to scan.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== 3. OFFICER DASHBOARD & TRIAGE ==================== -->
+    <section id="view-officer-portal" class="view-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+        <div>
+          <h2 style="font-size:24px; font-weight:800;">Central Scrutiny Queue & Triage</h2>
+          <p style="color:var(--text-muted); font-size:14px;">Review real college submissions, verify extracted evidence, and record human-in-the-loop regulatory decisions.</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadOfficerQueue()">🔄 Refresh Queue</button>
+      </div>
+
+      <!-- Queue Table -->
+      <div class="glass" style="border-radius:var(--radius-md); overflow:hidden; margin-bottom:24px;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>App ID</th>
+              <th>College Name</th>
+              <th>AICTE Permanent ID</th>
+              <th>State</th>
+              <th>Readiness</th>
+              <th>Risk Score</th>
+              <th>Status</th>
+              <th>Decision</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="officerQueueTableBody">
+            <tr><td colspan="9" style="text-align:center; color:var(--text-dim);">No applications submitted yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Split Screen Document Review Panel -->
+      <div id="officerDetailSplit" class="split-view-container" style="display:none;">
+        
+        <!-- Left: Real Document Viewer & Extractions -->
+        <div class="glass doc-viewer-panel" style="padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-subtle); padding-bottom:8px;">
+            <div>
+              <h3 style="font-size:15px; font-weight:700;" id="officerDocTitle">Document Inspection</h3>
+              <div style="font-size:11px; font-family:'JetBrains Mono'; color:var(--text-dim);" id="officerDocHash">SHA-256: --</div>
+            </div>
+            <a id="btnOfficerDownloadPdf" href="#" target="_blank" class="btn btn-secondary" style="font-size:11px; padding:4px 8px;">Open Original PDF</a>
+          </div>
+
+          <div style="position:relative; background:#0f172a; border-radius:var(--radius-sm); height:380px; overflow:hidden; margin-bottom:14px; border:1px solid var(--border-subtle);">
+            <iframe id="officerDocIframe" src="" style="width:100%; height:100%; border:none;"></iframe>
+          </div>
+
+          <!-- Real Field Extractions Table -->
+          <div>
+            <h4 style="font-size:12px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">OCR & Plumber Extracted Fields</h4>
+            <div id="officerExtractionsBox" style="background:rgba(2, 6, 23, 0.6); padding:10px; border-radius:8px; font-size:12px; max-height:140px; overflow-y:auto;">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Evidence-linked Findings & Final Decision Gate -->
+        <div class="glass evidence-review-panel" style="padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid var(--border-subtle); padding-bottom:10px;">
+            <h3 style="font-size:15px; font-weight:700;">AI Findings & Regulatory Anomalies</h3>
+            <span class="badge-pill badge-high" id="officerRiskBadge">Risk Score: --</span>
+          </div>
+
+          <div id="officerFindingsList" style="display:flex; flex-direction:column; gap:12px; flex:1; overflow-y:auto; padding-right:6px;">
+            <!-- Rendered via JS -->
+          </div>
+
+          <!-- Named Officer Decision Gate -->
+          <div style="margin-top:16px; border-top:1px solid var(--border-subtle); padding-top:16px; background:rgba(2, 6, 23, 0.4); padding:14px; border-radius:var(--radius-sm);">
+            <div style="font-size:12px; font-weight:700; margin-bottom:6px; color:var(--accent-amber);">
+              ⚖️ Human-in-the-Loop Statutory Decision Gate
+            </div>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="inpOfficerDecisionReason" placeholder="Enter mandatory written justification..." style="flex:1; padding:8px 12px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:12px;">
+              <button class="btn btn-success" id="btnOfficerApprove">Approve</button>
+              <button class="btn btn-danger" id="btnOfficerReject">Reject</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== 4. TRUST LEDGER VIEW ==================== -->
+    <section id="view-ledger" class="view-section">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 24px;">
+        <div>
+          <h2 style="font-size:24px; font-weight:800;">Trust Ledger & Tamper Audit</h2>
+          <p style="color:var(--text-muted); font-size:14px;">Every registration, parameter update, document upload, and decision is cryptographically chained with SHA-256 in MySQL.</p>
+        </div>
+        <button class="btn btn-primary" id="btnVerifyChain">🔍 Verify Hash Chain Integrity</button>
+      </div>
+
+      <div id="chainStatusBanner" style="display:none; padding:16px 20px; border-radius:var(--radius-md); margin-bottom:20px;"></div>
+
+      <div class="glass" style="border-radius:var(--radius-md); overflow:hidden;">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Seq #</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Entity</th>
+              <th>Prev Hash</th>
+              <th>Chained Entry Hash</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="trustLedgerTableBody">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No transactions recorded in ledger yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== 5. OFFICER COPILOT VIEW ==================== -->
+    <section id="view-copilot" class="view-section">
+      <div style="margin-bottom: 20px;">
+        <h2 style="font-size:24px; font-weight:800;">AICTE Handbook RAG Copilot</h2>
+        <p style="color:var(--text-muted); font-size:14px;">Ask questions over official AICTE norms with direct clause citations.</p>
+      </div>
+
+      <div class="copilot-container">
+        <div class="glass" style="padding:18px; border-radius:var(--radius-md); display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-dim);">Suggested Queries</div>
+          <button class="btn btn-secondary preset-btn" style="text-align:left; font-size:12px; padding:8px;">Is a Fire Safety NOC required for Continuation of Approval (EoA)?</button>
+          <button class="btn btn-secondary preset-btn" style="text-align:left; font-size:12px; padding:8px;">What are the rules for expansion of intake?</button>
+          <button class="btn btn-secondary preset-btn" style="text-align:left; font-size:12px; padding:8px;">What is the required Student-to-Faculty Ratio (SFR)?</button>
+          <button class="btn btn-secondary preset-btn" style="text-align:left; font-size:12px; padding:8px;">What is the minimum land requirement for urban institutions?</button>
+        </div>
+
+        <div class="glass chat-box">
+          <div class="chat-messages" id="chatMsgContainer">
+            <div class="chat-msg copilot">
+              <b>AICTE Officer Copilot</b><br>
+              Ready to answer statutory queries based on the AICTE Approval Process Handbook (2024-2027).
+            </div>
+          </div>
+          <div style="padding:14px; border-top:1px solid var(--border-subtle); display:flex; gap:10px; background:rgba(2, 6, 23, 0.6);">
+            <input type="text" id="copilotTextInput" placeholder="Ask a question..." style="flex:1; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle); font-size:13px;">
+            <button class="btn btn-primary" id="btnCopilotSend">Ask Copilot</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
