@@ -47,5 +47,13 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 
-# Uploaded documents (avoid storing sensitive/huge files in git)
+# Model weights
+*.pt
+*.pkl
+*.bin
+
+# Uploads artifacts
 backend/uploads/*.temp.*
+backend/uploads/*.ela.png
+backend/uploads/infra_*
+backend/uploads/app_*
