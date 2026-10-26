@@ -1,5 +1,6 @@
 import os
 import hashlib
+import json
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -225,23 +226,25 @@ def submit_college_details(
         ORDER BY id DESC LIMIT 1
     """, (institution_id,))
 
+    import json
+    form_json = json.dumps(form_data)
+    version_hash = calculate_sha256(form_json)
+
     if existing_app:
         app_id = existing_app["id"]
-        version_hash = calculate_sha256(str(form_data))
         execute("""
             INSERT INTO application_versions (application_id, version_no, form_data, submission_hash, created_at)
             VALUES (%s, 1, %s, %s, NOW())
-        """, (app_id, str(form_data), version_hash))
+        """, (app_id, form_json, version_hash))
     else:
         app_id = execute("""
             INSERT INTO applications (institution_id, category_id, status, readiness_score, risk_score, current_version, created_at)
             VALUES (%s, %s, 'DRAFT', 25, 20, 1, NOW())
         """, (institution_id, category_id))
-        version_hash = calculate_sha256(str(form_data))
         execute("""
             INSERT INTO application_versions (application_id, version_no, form_data, submission_hash, created_at)
             VALUES (%s, 1, %s, %s, NOW())
-        """, (app_id, str(form_data), version_hash))
+        """, (app_id, form_json, version_hash))
 
     record_audit(f"institution_{institution_id}", "DETAILS_UPDATED", "APPLICATION", app_id, form_data)
     return {"status": "success", "application_id": app_id, "message": "College parameters registered."}
@@ -288,85 +291,27 @@ async def upload_checklist_doc(
             VALUES (%s, %s, %s, %s, %s, %s, 'ocr')
         """, (doc_id, k, str(v), 0.950, 1, str(bbox) if bbox else None))
 
-    # 4. Run real forensic anomaly inspection on this upload
-    # Check A: Metadata tampering
-    meta_anomalies = inspect_metadata(extracted["metadata"])
-    for ma in meta_anomalies:
-        f_id = execute("""
-            INSERT INTO findings (application_id, document_id, source_type, severity, title, reason, confidence, status, created_at)
-            VALUES (%s, %s, 'ANOMALY', %s, %s, %s, %s, 'OPEN', NOW())
-        """, (application_id, doc_id, ma["severity"], ma["title"], ma["reason"], ma["confidence"]))
-        execute("""
-            INSERT INTO evidence (finding_id, kind, document_id, page_no, snippet)
-            VALUES (%s, 'METADATA', %s, 1, %s)
-        """, (f_id, doc_id, ma["evidence"]["snippet"]))
-
-    # Check B: Real Expiry / Date Logic
-    expiry_val = extracted["extractions"].get("expiry_date")
-    issue_val = extracted["extractions"].get("issue_date")
-    date_flags = check_dates_logic(issue_val, expiry_val)
-    for df in date_flags:
-        execute("""
-            INSERT INTO findings (application_id, document_id, source_type, severity, title, reason, confidence, status, created_at)
-            VALUES (%s, %s, 'RULE', %s, %s, %s, %s, 'OPEN', NOW())
-        """, (application_id, doc_id, df["severity"], df["title"], df["reason"], df["confidence"]))
-
-    # Check C: Duplicate file cross-check across institutions
-    existing_dup = fetch_one("""
-        SELECT d.id, i.name as other_inst 
-        FROM documents d
-        JOIN applications a ON d.application_id = a.id
-        JOIN institutions i ON a.institution_id = i.id
-        WHERE d.sha256 = %s AND d.id != %s AND a.institution_id != %s
-    """, (file_sha256, doc_id, app_info["institution_id"]))
-
-    if existing_dup:
-        execute("""
-            INSERT INTO findings (application_id, document_id, source_type, severity, title, reason, confidence, status, created_at)
-            VALUES (%s, %s, 'GRAPH', 'HIGH', 'Duplicate Document Recycled Across Different Colleges', %s, 0.99, 'OPEN', NOW())
-        """, (application_id, doc_id, f"Exact file SHA-256 binary match with document previously uploaded by '{existing_dup['other_inst']}'."))
-
-    # 5. Evaluate handbook rules
+    # 4. Invoke Multi-Agent Scrutiny Orchestrator
+    # Coordinates: Document Classifier, Forensics Agent, Regulatory APH 2024-27 Agent, Graph Check Agent
     form_version = fetch_one("SELECT form_data FROM application_versions WHERE application_id = %s ORDER BY version_no DESC LIMIT 1", (application_id,))
-    form_data = eval(form_version["form_data"]) if form_version else {}
+    if form_version and form_version.get("form_data"):
+        raw_fd = form_version["form_data"]
+        form_data = json.loads(raw_fd) if isinstance(raw_fd, str) else dict(raw_fd)
+    else:
+        form_data = {}
     form_data["trust_name"] = app_info["trust_name"]
 
-    rule_findings = evaluate_application_rules(form_data, extracted["extractions"])
-    for rf in rule_findings:
-        execute("""
-            INSERT INTO findings (application_id, document_id, source_type, severity, title, reason, confidence, status, created_at)
-            VALUES (%s, %s, 'RULE', %s, %s, %s, %s, 'OPEN', NOW())
-        """, (application_id, doc_id, rf["severity"], rf["title"], rf["reason"], rf["confidence"]))
-
-    # 6. Recalculate Readiness & Risk
-    all_findings = fetch_all("SELECT severity FROM findings WHERE application_id = %s", (application_id,))
-    all_docs = fetch_all("SELECT DISTINCT doc_type FROM documents WHERE application_id = %s", (application_id,))
-    
-    # 5 mandatory items in checklist
-    readiness = calculate_readiness_score(all_findings, 5, len(all_docs))
-    risk = calculate_risk_score(all_findings)
-
-    execute("""
-        UPDATE applications 
-        SET readiness_score = %s, risk_score = %s, status = 'SUBMITTED', submitted_at = NOW()
-        WHERE id = %s
-    """, (readiness, risk, application_id))
-
-    # 7. Tamper-evident audit log entry
-    audit_receipt = record_audit(
-        actor=app_info["institution_name"],
-        action="DOCUMENT_SCANNED_AND_ANALYZED",
-        entity_type="DOCUMENT",
-        entity_id=doc_id,
-        payload={
-            "doc_type": doc_type,
-            "filename": file.filename,
-            "sha256": file_sha256,
-            "page_count": extracted["page_count"],
-            "extractions": extracted["extractions"],
-            "readiness_score": readiness,
-            "risk_score": risk
-        }
+    from app.services.agents.orchestrator import orchestrator
+    scrutiny_res = orchestrator.scrutinize_upload(
+        application_id=application_id,
+        document_id=doc_id,
+        institution_id=app_info["institution_id"],
+        institution_name=app_info["institution_name"],
+        doc_type=doc_type,
+        file_path=file_path,
+        file_sha256=file_sha256,
+        extracted_data=extracted,
+        form_data=form_data
     )
 
     return {
@@ -376,9 +321,10 @@ async def upload_checklist_doc(
         "file_sha256": file_sha256,
         "extracted_text_preview": extracted["raw_text"][:300] + ("..." if len(extracted["raw_text"]) > 300 else ""),
         "extractions": extracted["extractions"],
-        "readiness_score": readiness,
-        "risk_score": risk,
-        "audit_receipt": audit_receipt
+        "classification": scrutiny_res["classification"],
+        "readiness_score": scrutiny_res["readiness_score"],
+        "risk_score": scrutiny_res["risk_score"],
+        "audit_receipt": scrutiny_res["audit_receipt"]
     }
 
 # ==================== OFFICER DASHBOARD & DECISION-SUPPORT ====================
@@ -515,3 +461,64 @@ def toggle_adapter(req: AdapterToggleRequest):
 @app.get("/api/metrics")
 def get_metrics():
     return get_evaluation_metrics()
+
+# ==================== INFRASTRUCTURE COMPUTER VISION (YOLOv8) ====================
+
+@app.post("/api/college/upload-infra-photo")
+async def upload_infra_photo(
+    application_id: int = Form(...),
+    photo_type: str = Form("Computer Lab"),
+    file: UploadFile = File(...)
+):
+    from app.services.infra_cv_service import infra_cv_service
+
+    app_info = fetch_one("""
+        SELECT a.*, i.name as institution_name, i.lat, i.lng
+        FROM applications a
+        JOIN institutions i ON a.institution_id = i.id
+        WHERE a.id = %s
+    """, (application_id,))
+
+    if not app_info:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    file_bytes = await file.read()
+    safe_name = f"infra_{application_id}_{int(datetime.utcnow().timestamp())}_{file.filename.replace(' ', '_')}"
+    file_path = os.path.join(UPLOAD_DIR, safe_name)
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+
+    # Run YOLOv8 and EXIF GPS analysis
+    analysis = infra_cv_service.analyze_infra_photo(
+        photo_path=file_path,
+        campus_lat=float(app_info["lat"]) if app_info["lat"] else None,
+        campus_lng=float(app_info["lng"]) if app_info["lng"] else None
+    )
+
+    # Record finding if GPS discrepancy or insufficient indicators
+    if not analysis["gps_match"]:
+        execute("""
+            INSERT INTO findings (application_id, source_type, severity, title, reason, confidence, status, created_at)
+            VALUES (%s, 'INFRA', 'HIGH', 'Infrastructure Photo Geotag Location Mismatch', %s, 0.95, 'OPEN', NOW())
+        """, (application_id, analysis["advisory"]))
+
+    record_audit(
+        actor=app_info["institution_name"],
+        action="INFRASTRUCTURE_PHOTO_ANALYZED",
+        entity_type="APPLICATION",
+        entity_id=application_id,
+        payload={
+            "photo_type": photo_type,
+            "filename": file.filename,
+            "indicators": analysis["detected_indicators"],
+            "gps_match": analysis["gps_match"]
+        }
+    )
+
+    return {
+        "status": "success",
+        "photo_file": safe_name,
+        "photo_type": photo_type,
+        "analysis": analysis
+    }
+

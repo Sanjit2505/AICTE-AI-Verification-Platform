@@ -251,6 +251,36 @@
               </button>
             </form>
           </div>
+
+          <!-- Step 3: Infrastructure Computer Vision (YOLOv8) -->
+          <div style="margin-top:24px; border-top:1px solid var(--border-subtle); padding-top:18px;">
+            <h3 style="font-size:16px; font-weight:700; color:var(--accent-purple); margin-bottom:12px;">3. Lab & Infrastructure Photo Verification (YOLOv8 + EXIF GPS)</h3>
+            
+            <form id="formInfraUpload" style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Infrastructure Facility Type</label>
+                <select id="selectInfraType" style="width:100%; padding:10px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+                  <option value="Computer Lab">Computer Terminal Lab / IT Center</option>
+                  <option value="Central Workshop">Engineering Central Workshop</option>
+                  <option value="Classroom">Smart Classroom / Lecture Hall</option>
+                  <option value="Library">Central Digital Library</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Upload Real Photo (JPEG/PNG)</label>
+                <input type="file" id="infraPhotoInput" accept=".jpg,.jpeg,.png" required style="width:100%; padding:8px; border-radius:8px; background:#0f172a; color:#fff; border:1px solid var(--border-subtle);">
+              </div>
+
+              <button type="submit" id="btnUploadInfraSubmit" class="btn" style="background:linear-gradient(135deg, #7c3aed, #a855f7); color:#fff; padding:12px; margin-top:4px;">
+                👁️ Run YOLOv8 Object Detection & Geotag Verification
+              </button>
+            </form>
+
+            <div id="infraAnalysisResult" style="display:none; margin-top:12px; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; border:1px solid var(--border-subtle); font-size:12px;">
+              <!-- Populated via JS -->
+            </div>
+          </div>
         </div>
 
         <!-- Right Side: Real-time Analysis, Readiness Report & Uploaded Documents -->

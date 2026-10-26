@@ -228,7 +228,16 @@ function initCollegePortalEvents() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Upload failed");
 
-      alert(`✓ Document '${docType}' scanned successfully!\nSHA-256 Hash: ${data.file_sha256.substring(0, 24)}...\nReadiness Score: ${data.readiness_score}/100`);
+      let alertMsg = `✓ Document '${docType}' scanned successfully!\n`;
+      if (data.classification) {
+        alertMsg += `🤖 AI Classifier: ${data.classification.predicted_category} (${Math.round(data.classification.confidence * 100)}% confidence)\n`;
+        if (data.classification.category_anomaly) {
+          alertMsg += `⚠️ WARNING: Content appears to be '${data.classification.predicted_category}', not '${docType}'!\n`;
+        }
+      }
+      alertMsg += `Readiness Score: ${data.readiness_score}/100`;
+      alert(alertMsg);
+
       fileInput.value = "";
       loadCollegeApplicationData();
     } catch (err) {
@@ -238,6 +247,63 @@ function initCollegePortalEvents() {
       btn.disabled = false;
     }
   });
+
+  // Upload Infrastructure Photo (YOLOv8 + GPS)
+  const infraForm = document.getElementById("formInfraUpload");
+  if (infraForm) {
+    infraForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentActiveApp) {
+        alert("Please submit parameters first.");
+        return;
+      }
+      const photoType = document.getElementById("selectInfraType").value;
+      const photoInput = document.getElementById("infraPhotoInput");
+      if (!photoInput.files || photoInput.files.length === 0) {
+        alert("Please select a photo.");
+        return;
+      }
+
+      const btn = document.getElementById("btnUploadInfraSubmit");
+      btn.innerText = "⏳ Running YOLOv8 Indicator Detection...";
+      btn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append("application_id", currentActiveApp.id);
+        formData.append("photo_type", photoType);
+        formData.append("file", photoInput.files[0]);
+
+        const res = await fetch(`${API_BASE}/api/college/upload-infra-photo`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Analysis failed");
+
+        const resBox = document.getElementById("infraAnalysisResult");
+        resBox.style.display = "block";
+        const ind = data.analysis.detected_indicators;
+        resBox.innerHTML = `
+          <div style="font-weight:700; color:var(--accent-purple); margin-bottom:4px;">👁️ YOLOv8 Pretrained Detections:</div>
+          <div>💻 Computers / Laptops: <b>${ind.computers}</b> | 🖥️ Monitors: <b>${ind.monitors}</b> | 🪑 Chairs: <b>${ind.chairs}</b> | 🪑 Benches: <b>${ind.benches}</b></div>
+          <div style="margin-top:6px; color:${data.analysis.gps_match ? 'var(--accent-emerald)' : 'var(--accent-rose)'};">
+            ${data.analysis.gps_match ? '✓ Geotag GPS verified within campus radius' : '⚠️ Geotag GPS discrepancy with campus registration'}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${data.analysis.advisory}</div>
+        `;
+
+        alert("Infrastructure photo analyzed with YOLOv8 indicators!");
+        photoInput.value = "";
+        loadCollegeApplicationData();
+      } catch (err) {
+        alert("Infra CV Error: " + err.message);
+      } finally {
+        btn.innerText = "👁️ Run YOLOv8 Object Detection & Geotag Verification";
+        btn.disabled = false;
+      }
+    });
+  }
 }
 
 async function loadCollegeApplicationData() {
